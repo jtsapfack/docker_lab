@@ -2,7 +2,7 @@
 FROM python:3.9-slim
 
 # Set an application directory
-WORKDIR /app
+WORKDIR /usr/src/app
 
 # Prevent python from writing .pyc files and enable stdout/stderr unbuffered
 # ENV PYTHONDONTWRITEBYTECODE=1
