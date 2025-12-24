@@ -9,51 +9,67 @@ on:
       - master
 
 jobs:
-  build:
+  # Job 1: Run Unit Tests
+  unit-tests:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-    
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.13'
-    
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-    
-    - name: Run tests
-      run: |
-        pytest test_app.py
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    - name: Build Docker image
-      run: docker build -t myapp:latest .
-        
-      # --- Docker Login Step (Using dedicated action) ---
-    - name: Login to Docker Hub
-      uses: docker/login-action@v3
-      with:
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
-          
-      # Login to Secure Private Registry (Registry 2)
-      - name: 🔑 Login to Secure Private Registry
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.13'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run tests
+        id: run_tests
+        run: pytest test_app.py
+
+      # Send email notification if tests fail
+      - name: Send mail on failure
+        if: failure()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: Github Action Test Run Failed
+          to: your-email@example.com
+          from: GitHub Actions CI
+
+  # Job 2: Build and Push (Runs in parallel with Unit Tests)
+  build-and-push:
+    runs-on: ubuntu-latest
+    # This ensures the push only happens if the unit-tests job succeeded
+    needs: unit-tests 
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
-          registry: ${{ secrets.PRIVATE_REGISTRY_URL }} 
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Login to Private Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.PRIVATE_REGISTRY_URL }}
           username: ${{ secrets.PRIVATE_REGISTRY_USERNAME }}
           password: ${{ secrets.PRIVATE_REGISTRY_PASSWORD }}
 
-      # Build and Push to Both Registries
-      - name: 🏗️ Build and Push to Multiple Registries
+      - name: Build and Push to Multiple Registries
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          # Note the full registry URL included in the tag for the private registry
           tags: |
             ${{ secrets.DOCKER_USERNAME }}/my-app:latest
             ${{ secrets.PRIVATE_REGISTRY_URL }}/my-app:latest
