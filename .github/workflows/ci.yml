@@ -71,9 +71,6 @@ jobs:
           context: .
           push: true
           tags: |
-            #${{ secrets.DOCKER_USERNAME }}/my-app:latest
-            #${{ secrets.PRIVATE_REGISTRY_URL }}/my-app:latest
-            # Docker Hub (Ensure your username in the secret is lowercase)
             ${{ secrets.DOCKER_USERNAME }}/my-app:latest
-            # Private Registry (Manually prefixing ghcr.io to be safe)
-            ghcr.io/${{ github.repository_owner }}/my-app:latest
+            ${{ secrets.PRIVATE_REGISTRY_URL }}/my-app:latest
+            
